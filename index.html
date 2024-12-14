@@ -5,69 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.3/Tone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-</head>
+    <script src="index.js" type="module"></script>
+    </head>
 
 <body>
-    <div id="input"></div>
-    <div id="output"></div>
-    <div id="data"></div>
-    <script>
-        navigator.requestMIDIAccess().then(successCallback, faildCallback);
-
-        var midi = null;
-        var inputs = [];
-        var outputs = [];
-
-        let playing_notes = [];
-
-        // MIDI接続成功時
-        function successCallback(m) {
-            console.log("asd");
-            midi = m;
-            
-            // 入力MIDIデバイスの記録
-            var it = midi.inputs.values();
-            for (var o = it.next(); !o.done; o = it.next()) {
-                inputs.push(o.value);
-                $("#input").append("<li>" + o.value.name + "</li>");
-            }
-
-            var ot = midi.outputs.values();
-            for (var o = ot.next(); !o.done; o = ot.next()) {
-                outputs.push(o.value);
-                $("#output").append("<li>" + o.value.name + "</li>");
-            }
-
-            // 入力MIDIデバイスから入力が来たときの処理の登録
-            for (var cnt = 0; cnt < inputs.length; cnt++) {
-                inputs[cnt].onmidimessage = onMIDIEvent;
-            }
-        }
-
-        function faildCallback(msg) {
-            console.log("[Error]:" + msg);
-        }
-
-        //入力MIDIデバイスから入力が来たときの処理
-        function onMIDIEvent(e) {
-            let is_pushed = e.data[0] == 159
-            let scale = e.data[1] - 35
-            if (is_pushed) {
-                playing_notes.push(scale)
-            } else {
-                let note = playing_notes.indexOf(scale);
-                playing_notes.splice(note, 1);
-            }
-            console.log(playing_notes)
-        }
-
-
-
-
-    </script>
+    <p class="notes"></p>
 </body>
 
 </html>
