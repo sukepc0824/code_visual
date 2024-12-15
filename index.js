@@ -110,19 +110,26 @@ const easing = {
 
 function setup() {
     createCanvas(CANVAS.width, CANVAS.height);
+    background(0)
+    mp = new MultiplePoints([0, 4, 7], [0, 1, 2])
 }
+
+let frame = 0
 
 function draw() {
     for (let i = 0; i < 12; i++) {
         new NotePoint(i).point();
     }
-
+    if (frame % 3 == 0 && mp !== undefined) {
+        mp.move()
+    }
     if (mp !== undefined) {
         if (mp.progress < 1) {
-            mp.move()
-            text(notes_midi.length ? chordJs.Chord.for(notes_midi)?.getName() : 0, 10, 10)
+            //mp.move()
+            //text(notes_midi.length ? chordJs.Chord.for(notes_midi)?.getName() : 0, 10, 10)
         }
     }
+    frame++
 }
 
 class NotePoint {
@@ -144,7 +151,6 @@ class MultiplePoints {
 
         this.progress = 0;
         this.progress_list = [];
-
         if (before_array !== undefined) {
             for (let i = 0; i < this.array.length; i++) {
                 if (before_array[i] !== undefined) {
@@ -157,19 +163,19 @@ class MultiplePoints {
         }
     }
     line() {
+        background(0)
         this.array.forEach((pv) => {
             this.array.forEach((cv) => {
                 let note1 = new NotePoint(pv);
                 let note2 = new NotePoint(cv);
                 strokeWeight(0.8);
-                line(note1.x, note1.y, note2.x, note2.y);
+                drawLineWithPoints(note1.x, note1.y, note2.x, note2.y, 15);
             });
         });
     }
     move() {
         if (this.before_array !== undefined && this.array !== undefined) {
             if (this.progress < 1) {
-                background(255);
                 this.array.forEach((v, i) => {
                     this.progress_list[i] = this.before_array[i] + (v - this.before_array[i]) * easing.easeOutQuint(this.progress)
                 });
@@ -182,6 +188,7 @@ class MultiplePoints {
     }
 }
 
+
 const sumArray = (numbers) => {
     let sum = 0;
     for (let i = 0; i < numbers.length; i++) {
@@ -189,6 +196,24 @@ const sumArray = (numbers) => {
     }
     return sum;
 };
+
+function drawLineWithPoints(x1, y1, x2, y2, w) {
+    let steps = dist(x1, y1, x2, y2);
+    let stepSize = 1;
+    circle(x1, y1, 10);
+    circle(x2, y2, 10);
+    for (let i = 0; i < steps; i += stepSize) {
+        let x = lerp(x1, x2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // x座標を補間
+        let y = lerp(y1, y2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // y座標を補間
+
+        stroke(random(100, 255));
+        circle(x, y, 1);
+    }
+}
+
+function toanimation() {
+    mp = new MultiplePoints([0,4,7,1], mp.progress_list);
+}
 
 window.setup = setup
 window.draw = draw

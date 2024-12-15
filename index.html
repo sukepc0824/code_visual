@@ -5,15 +5,252 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="index.js" type="module"></script>
-    </head>
+    <script src="https://cdn.jsdelivr.net/npm/webmidi@latest/dist/iife/webmidi.iife.js"></script>
+</head>
 
-<body>
-    <p class="notes"></p>
+<body style="background: black; display: flex;align-items: center;justify-content: center; height: 100vh;">
+    <script type="module">
+        import * as chordJs from "https://esm.sh/@patrady/chord-js";
+        var midi = null;
+        var inputs = [];
+        var outputs = [];
+
+        let pre_playing_notes = [];
+        let playing_notes = [];
+        let is_pushed;
+        let stable_pushed;
+        let notes_midi = []
+
+        function onMIDISuccess(midiAccess) {
+            console.log("MIDI ready!");
+            const input = midiAccess.inputs.values().next();
+            console.log(input.value.manufacturer);
+            console.log(input.value.name);
+
+            input.value.onmidimessage = onMIDIMessage;
+        }
+
+        function onMIDIMessage(e) {
+            is_pushed = e.data[0] == 159
+            let scale = e.data[1] - 36
+            if (is_pushed) {
+                playing_notes.push(scale)
+                playing_notes.sort(f);
+                quantize_check(playing_notes)
+            } else {
+                let note = playing_notes.indexOf(scale);
+                playing_notes.splice(note, 1);
+                quantize_check(playing_notes)
+            }
+        }
+
+        function f(a, b) {
+            return a - b
+        }
+
+        let mp;
+
+        function quantize_check(pre) {
+            let pre_notes = pre.toString()
+            setTimeout(() => {
+                if (playing_notes.toString() === pre_notes) {
+                    if (playing_notes.length > 0) {
+                        notes_midi = [pre]
+                        if (mp === undefined) {
+                            mp = new MultiplePoints(playing_notes, playing_notes);
+                        } else {
+                            mp = new MultiplePoints(playing_notes, mp.progress_list);
+                        }
+                        stable_pushed = true
+                    } else {
+                        stable_pushed = false
+                    }
+                }
+            }, 70);
+        }
+
+        function onMIDIFailure(msg) {
+            console.log("Failed to get MIDI access - " + msg);
+        }
+
+        ///////////
+
+        const CANVAS = {
+            width: 1000,
+            height: 1000,
+        };
+        const RING = {
+            size: 500,
+        };
+
+        const easing = {
+            linear: (t) => t,
+            easeInQuad: (t) => t * t,
+            easeOutQuad: (t) => t * (2 - t),
+            easeInOutQuad: (t) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
+            easeInCubic: (t) => t * t * t,
+            easeOutCubic: (t) => --t * t * t + 1,
+            easeInQuart: (t) => t * t * t * t,
+            easeOutQuint: t => 1 + (--t) * t * t * t * t,
+        };
+
+        function setup() {
+            createCanvas(CANVAS.width, CANVAS.height);
+            background(0)
+            navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure)
+            mp = new MultiplePoints([0, 1, 2], [0, 4, 5])
+        }
+
+        function ruler() {
+            (["C", "C#", "D", "D#", "E", "F", "F#", "G", "Gb", "A", "A#", "B"]).forEach((v, i) => {
+                let y = (sin(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.height / 2;
+                let x = (cos(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.width / 2;
+
+                strokeWeight(0)
+                textAlign(CENTER, CENTER)
+                textFont("Doto")
+                textSize(18);
+                text(v, x, y)
+                fill(255);
+            })
+        }
+
+        let frame = 0
+        function draw() {
+            for (let i = 0; i < 12; i++) {
+                new NotePoint(i).point();
+            }
+            if (mp !== undefined) {
+                if (mp.progress < 1) {
+                    mp.move()
+                    //text(notes_midi.length ? chordJs.Chord.for(notes_midi)?.getName() : 0, 10, 10)
+                } else {
+                    new MultiplePoints(mp.progress_list).line(15)
+                }
+            }
+            ruler()
+            frame++
+        }
+
+        class NotePoint {
+            constructor(p_index) {
+                this.i = p_index;
+                this.y = (sin(((PI * 2) / 12) * (12 - this.i) - PI / 2) * RING.size) / 2 + CANVAS.height / 2;
+                this.x = (cos(((PI * 2) / 12) * (12 - this.i) - PI / 2) * RING.size) / 2 + CANVAS.width / 2;
+            }
+
+            point() {
+                point(this.x, this.y);
+            }
+        }
+
+        class MultiplePoints {
+            constructor(array, before_array) {
+                this.array = array;
+                this.before_array = before_array;
+
+                this.progress = 0;
+                this.progress_list = [];
+                if (before_array !== undefined) {
+                    for (let i = 0; i < this.array.length; i++) {
+                        if (before_array[i] !== undefined) {
+                            this.progress_list.push(before_array[i]);
+                        } else {
+                            this.progress_list.push(max(before_array));
+                            this.before_array.push(max(before_array))
+                        }
+                    }
+                }
+            }
+            line(weight) {
+                if (frame % 2 == 0) {
+                    background(0)
+                    this.array.forEach((pv) => {
+                        this.array.forEach((cv) => {
+                            let note1 = new NotePoint(pv);
+                            let note2 = new NotePoint(cv);
+                            strokeWeight(0.8);
+                            drawLineWithPoints(note1.x, note1.y, note2.x, note2.y, weight);
+                        });
+                    });
+                    particle_circle()
+                }
+            }
+            move() {
+                if (this.before_array !== undefined && this.array !== undefined) {
+                    if (this.progress < 1) {
+                        this.array.forEach((v, i) => {
+                            this.progress_list[i] = this.before_array[i] + (v - this.before_array[i]) * easing.easeOutQuint(this.progress)
+                        });
+                        new MultiplePoints(this.progress_list).line((1 - easing.easeOutQuint(this.progress)) * 400 + 16);
+                    } else {
+                        this.line(16);
+                    }
+                    this.progress += 1 / 60;
+                }
+            }
+        }
+
+
+        const sumArray = (numbers) => {
+            let sum = 0;
+            for (let i = 0; i < numbers.length; i++) {
+                sum += numbers[i];
+            }
+            return sum;
+        };
+
+        function drawLineWithPoints(x1, y1, x2, y2, w) {
+            let steps = dist(x1, y1, x2, y2);
+            let stepSize = 0.6;
+            //circle(x1, y1, 10);
+            //circle(x2, y2, 10);
+            for (let i = 0; i < steps; i += stepSize) {
+                let x = lerp(x1, x2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // x座標を補間
+                let y = lerp(y1, y2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // y座標を補間
+
+                stroke(random(200, 255));
+                circle(x, y, 1);
+            }
+        }
+
+        function toanimation() {
+            // mp = new MultiplePoints([int(random(0, 11)), int(random(0, 11)), int(random(0, 11)), int(random(0, 11))], mp.progress_list);
+        }
+
+        function particle_circle() {
+            for (let i = 0; i < 1200; i++) {
+                let theta = random(0, TWO_PI);
+                let h = randomGaussian(2 + mp.progress * 1.5);
+                let r = (exp(h) - 1) / (exp(h) + 1);
+                let x = (RING.size / 2 + 7) * r * cos(theta);
+                let y = (RING.size / 2 + 7) * r * sin(theta);
+
+                stroke(random(140, 255));
+                circle(x + width / 2, y + height / 2, 1);
+            }
+            for (let i = 0; i < 1200; i++) {
+                let theta = random(0, TWO_PI);
+                let h = randomGaussian(6 - (mp.progress * 1.5));
+                let r = (exp(h) - 1) / (exp(h) + 1);
+                let x = (RING.size / 2 + 7) * r * cos(theta);
+                let y = (RING.size / 2 + 7) * r * sin(theta);
+
+                stroke(random(255, 255));
+                circle(x + width / 2, y + height / 2, 1);
+            }
+        }
+
+        window.setup = setup
+        window.draw = draw
+    </script>
 </body>
 
 </html>
