@@ -88,7 +88,7 @@
             height: 1000,
         };
         const RING = {
-            size: 500,
+            size: 400,
         };
 
         const easing = {
@@ -209,7 +209,7 @@
 
         function drawLineWithPoints(x1, y1, x2, y2, w) {
             let steps = dist(x1, y1, x2, y2);
-            let stepSize = 0.6;
+            let stepSize = 4;
             //circle(x1, y1, 10);
             //circle(x2, y2, 10);
             for (let i = 0; i < steps; i += stepSize) {
@@ -217,7 +217,7 @@
                 let y = lerp(y1, y2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // y座標を補間
 
                 stroke(random(200, 255));
-                circle(x, y, 1);
+                circle(x, y, 1.5);
             }
         }
 
@@ -226,17 +226,17 @@
         }
 
         function particle_circle() {
-            for (let i = 0; i < 1200; i++) {
+            for (let i = 0; i < 200; i++) {
                 let theta = random(0, TWO_PI);
                 let h = randomGaussian(2 + mp.progress * 1.5);
                 let r = (exp(h) - 1) / (exp(h) + 1);
                 let x = (RING.size / 2 + 7) * r * cos(theta);
                 let y = (RING.size / 2 + 7) * r * sin(theta);
 
-                stroke(random(140, 255));
-                circle(x + width / 2, y + height / 2, 1);
+                stroke(random(200, 255));
+                circle(x + width / 2, y + height / 2, 1.5);
             }
-            for (let i = 0; i < 1200; i++) {
+            for (let i = 0; i < 200; i++) {
                 let theta = random(0, TWO_PI);
                 let h = randomGaussian(6 - (mp.progress * 1.5));
                 let r = (exp(h) - 1) / (exp(h) + 1);
@@ -244,7 +244,7 @@
                 let y = (RING.size / 2 + 7) * r * sin(theta);
 
                 stroke(random(255, 255));
-                circle(x + width / 2, y + height / 2, 1);
+                circle(x + width / 2, y + height / 2, 1.5);
             }
         }
 
