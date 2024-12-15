@@ -49,6 +49,7 @@
                 playing_notes.splice(note, 1);
                 quantize_check(playing_notes)
             }
+            console.log(playing_notes)
         }
 
         function f(a, b) {
@@ -105,7 +106,6 @@
             createCanvas(CANVAS.width, CANVAS.height);
             background(0)
             navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure)
-            mp = new MultiplePoints([0, 1, 2], [0, 4, 5])
         }
 
         function ruler() {
