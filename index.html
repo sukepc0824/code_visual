@@ -16,8 +16,9 @@
 </head>
 
 <body style="background: black; display: flex;align-items: center;justify-content: center; height: 100vh;">
-    <script type="module">
-        import * as chordJs from "https://esm.sh/@patrady/chord-js";
+    <button onclick="toanimation()">アニメ</button>
+    <script>
+        //import * as chordJs from "https://esm.sh/@patrady/chord-js";
         var midi = null;
         var inputs = [];
         var outputs = [];
@@ -38,22 +39,36 @@
         }
 
         function onMIDIMessage(e) {
-            is_pushed = e.data[0] == 159
+            is_pushed = 9 === e.data[0] >> 4;
             let scale = e.data[1] - 36
             if (is_pushed) {
                 playing_notes.push(scale)
+                console.log(key_position(scale))
                 playing_notes.sort(f);
                 quantize_check(playing_notes)
             } else {
                 let note = playing_notes.indexOf(scale);
                 playing_notes.splice(note, 1);
-                quantize_check(playing_notes)
+                //quantize_check(playing_notes)
             }
-            console.log(playing_notes)
         }
 
         function f(a, b) {
             return a - b
+        }
+
+        let distance = 2
+        function key_position(key) {
+            let value = 0
+
+            if (key % 12 < 5) {
+                value = 1 / 14 * (key % 12)
+            } else {
+                value = 1 / 14 * (key % 12 + 1)
+            }
+
+            value += int(key / 12)
+            return value
         }
 
         let mp;
@@ -75,6 +90,14 @@
                     }
                 }
             }, 70);
+        }
+
+        function key_line() {
+            strokeWeight(0.2)
+            stroke(255)
+            playing_notes.forEach(v => {
+                line(key_position(v) * 200, height, rulerPosition(v % 12)[0], rulerPosition(v % 12)[1])
+            })
         }
 
         function onMIDIFailure(msg) {
@@ -110,16 +133,17 @@
 
         function ruler() {
             (["C", "C#", "D", "D#", "E", "F", "F#", "G", "Gb", "A", "A#", "B"]).forEach((v, i) => {
-                let y = (sin(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.height / 2;
-                let x = (cos(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.width / 2;
-
                 strokeWeight(0)
                 textAlign(CENTER, CENTER)
                 textFont("Doto")
                 textSize(18);
-                text(v, x, y)
+                text(v, rulerPosition(i)[0], rulerPosition(i)[1])
                 fill(255);
             })
+        }
+
+        function rulerPosition(i) {
+            return [(cos(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.width / 2, (sin(((PI * 2) / 12) * (12 - i) - PI / 2) * RING.size * 1.17) / 2 + CANVAS.height / 2]
         }
 
         let frame = 0
@@ -132,10 +156,11 @@
                     mp.move()
                     //text(notes_midi.length ? chordJs.Chord.for(notes_midi)?.getName() : 0, 10, 10)
                 } else {
-                    new MultiplePoints(mp.progress_list).line(15)
+                    new MultiplePoints(mp.progress_list).line(16)
                 }
             }
             ruler()
+            key_line()
             frame++
         }
 
@@ -170,13 +195,13 @@
                 }
             }
             line(weight) {
-                if (frame % 2 == 0) {
+                if (frame % 3 == 0) {
                     background(0)
                     this.array.forEach((pv) => {
                         this.array.forEach((cv) => {
                             let note1 = new NotePoint(pv);
                             let note2 = new NotePoint(cv);
-                            strokeWeight(0.8);
+                            strokeWeight(0.3);
                             drawLineWithPoints(note1.x, note1.y, note2.x, note2.y, weight);
                         });
                     });
@@ -189,9 +214,9 @@
                         this.array.forEach((v, i) => {
                             this.progress_list[i] = this.before_array[i] + (v - this.before_array[i]) * easing.easeOutQuint(this.progress)
                         });
-                        new MultiplePoints(this.progress_list).line((1 - easing.easeOutQuint(this.progress)) * 400 + 16);
+                        new MultiplePoints(this.progress_list).line((1 - easing.easeOutQuint(this.progress)) * 400 + 20);
                     } else {
-                        this.line(16);
+                        this.line(20);
                     }
                     this.progress += 1 / 60;
                 }
@@ -209,47 +234,50 @@
 
         function drawLineWithPoints(x1, y1, x2, y2, w) {
             let steps = dist(x1, y1, x2, y2);
-            let stepSize = 4;
+            let stepSize = 7;
             //circle(x1, y1, 10);
             //circle(x2, y2, 10);
             for (let i = 0; i < steps; i += stepSize) {
-                let x = lerp(x1, x2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // x座標を補間
-                let y = lerp(y1, y2, i / steps) + (randomGaussian()) * w / 6 + w / 24; // y座標を補間
+                let x = lerp(x1, x2, i / steps) + (randomGaussian()) * (w) / 6 + w / 24; // x座標を補間
+                let y = lerp(y1, y2, i / steps) + (randomGaussian()) * (w) / 6 + w / 24; // y座標を補間
 
                 stroke(random(200, 255));
-                circle(x, y, 1.5);
+                strokeWeight(0.1)
+                line(x + random(-10, 10), y + random(-10, 10), x2 * random(0.999, 1.01) + random(-10, 10), y2 + random(-10, 10));
             }
         }
 
         function toanimation() {
-            // mp = new MultiplePoints([int(random(0, 11)), int(random(0, 11)), int(random(0, 11)), int(random(0, 11))], mp.progress_list);
+            mp = new MultiplePoints([int(random(0, 11)), int(random(0, 11)), int(random(0, 11))], mp.progress_list);
         }
 
         function particle_circle() {
-            for (let i = 0; i < 200; i++) {
+            for (let i = 0; i < 400; i++) {
                 let theta = random(0, TWO_PI);
                 let h = randomGaussian(2 + mp.progress * 1.5);
                 let r = (exp(h) - 1) / (exp(h) + 1);
-                let x = (RING.size / 2 + 7) * r * cos(theta);
-                let y = (RING.size / 2 + 7) * r * sin(theta);
+                let x = (RING.size / 2 + 7) * r * cos(theta) + width / 2;
+                let y = (RING.size / 2 + 7) * r * sin(theta) + height / 2;
 
                 stroke(random(200, 255));
-                circle(x + width / 2, y + height / 2, 1.5);
+                line(x + random(-10, 20), y + random(-10, 10), x + random(-10, 10), y + random(-10, 20));
             }
-            for (let i = 0; i < 200; i++) {
-                let theta = random(0, TWO_PI);
-                let h = randomGaussian(6 - (mp.progress * 1.5));
-                let r = (exp(h) - 1) / (exp(h) + 1);
-                let x = (RING.size / 2 + 7) * r * cos(theta);
-                let y = (RING.size / 2 + 7) * r * sin(theta);
 
-                stroke(random(255, 255));
-                circle(x + width / 2, y + height / 2, 1.5);
+            for (let i = 0; i < 600; i++) {
+                let theta = random(0, TWO_PI);
+                let h = randomGaussian(easing.easeOutQuint(mp.progress) + 2.5);
+                let r = (exp(h) - 1) / (exp(h) + 1);
+                let x = (RING.size * (1.25 - easing.easeOutCubic(mp.progress) / 4) / 2 + 7) * r * cos(theta) + width / 2;
+                let y = (RING.size * (1.25 - easing.easeOutCubic(mp.progress) / 4) / 2 + 7) * r * sin(theta) + height / 2;
+
+                stroke(random(124, 255));
+                line(x + random(-20, 20), y + random(-20, 20), x + random(-20, 20), y + random(-20, 20));
             }
         }
 
         window.setup = setup
         window.draw = draw
+
     </script>
 </body>
 
